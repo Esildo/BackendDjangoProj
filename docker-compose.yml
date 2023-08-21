@@ -1,0 +1,49 @@
+version: "3.11.3"
+
+services:
+    web:
+        build: ./
+        command: >
+            sh -c "python manage.py migrate &&
+            python manage.py runserver 0.0.0.0:8000"
+        ports:
+            - "8000:8000"
+        networks:
+            - db
+        depends_on:
+            db:
+                condition: service_healthy
+    db:
+        image: postgres:14.7
+        environment:
+            POSTGRES_DB: books_app
+            POSTGRES_USER: esildo
+            POSTGRES_PASSWORD: 11S45
+            PGDATA: /var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U esildo -d books_app"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        restart: unless-stopped
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: 4G
+        ports:
+            - "5432:5432"
+        volumes:
+            - ./pgdata:/var/lib/postgresql/data
+        networks:
+            - db
+    nginx:
+        build: ./nginx
+        ports:
+            - "80:80"
+        depends_on:
+            - web
+networks:
+    db:
+        driver: bridge
